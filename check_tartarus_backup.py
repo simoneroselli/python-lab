@@ -11,6 +11,7 @@ import sys, time, datetime, os.path
 import paramiko as p
 
 # Backup configuration file
+backup = 'postgresql'
 backup_cfg_file = '/etc/tartarus/generic.inc'
 
 if not os.path.exists(backup_cfg_file):
@@ -48,19 +49,18 @@ def fileIsOld(max_old_secs, today_secs, file_age_secs):
 
 # Main
 for f in ftp_file_list:
-	if f.startswith('.'):
+	if f.startswith('tartarus-' + backup):
 		continue
 	else:
 	    file_age_secs = sftp.stat(f).st_mtime
 	    file_age_date = datetime.datetime.fromtimestamp(file_age_secs).strftime('%d/%m/%Y')
 	    age_check = fileIsOld(max_old_secs, today_secs, file_age_secs)
-	
-  	    if age_check == True:
-	        print "REMOTE BACKUP OUTDATED - File " + '"' + f + '"' + " is older than " + old + "days" + ' (' + file_age_date + ')'
-	        sys.exit(1)
-	    else:
+        if age_check == True:
+            print "REMOTE BACKUP OUTDATED - File " + '"' + f + '"' + " is older than " + old + "days" + ' (' + file_age_date + ')'
+            sys.exit(1)
+        else:
             print "REMOTE BACKUP AGE OK - " + "Last check: " + datetime.datetime.fromtimestamp(today_secs).strftime('%d/%m/%Y')
-	        sys.exit(0)
+            sys.exit(0)
 
 sftp.close()
 transport.close()   

@@ -16,10 +16,11 @@
 import sys, time, datetime, os.path
 import paramiko as p
 
-# Backup configuration file
+# Retrieve backup name instance from the program-name
 backup = sys.argv[0].strip('./')
 backup = '_'.join(backup.split('_')[2:])
 
+# Backup configuration file
 backup_cfg_file = '/etc/tartarus/generic.inc'
 
 if not os.path.exists(backup_cfg_file):

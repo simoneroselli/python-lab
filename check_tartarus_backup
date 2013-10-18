@@ -14,7 +14,6 @@
 # Example: ln -s check_tartarus_backup check_tartarus_mysql
 
 import sys, time, datetime, os.path
-import fnmatch
 import paramiko as p
 
 # Backup configuration file

@@ -74,8 +74,6 @@ for f in ftp_file_list:
             transport.close()   
             sys.exit(0)
     
-    continue
-
 # Advise if the backup is not present at all on the server
 print "REMOTE BACKUP ERROR - Backup " + backup + " not found on the SFTP server .."
 sftp.close()

@@ -9,12 +9,21 @@
 # configuration. If the backup is remotely stored on the SFTP server,
 # check about its age and notify
 #
-# Usage: make a symlink to the check_tartarus_backup in Nagios's style
-# using the backup name. 
+# Max allowed backup age in seconds.(86400 = 1 day, 604800 = 1 week);
+# basically this time is calculated along MAX_AGE_IN_DAYS in the
+# '/etc/tartarus/<resource>.conf' value
+#
+# Usage: make a symlink to the check_tartarus_backup in
+# Nagios's style using the backup name.  
 # Example: ln -s check_tartarus_backup check_tartarus_mysql
 
-import sys, time, datetime, os.path
+import sys, time, datetime, os
 import paramiko as p
+
+backup_max_age = 604800
+old_print = (backup_max_age / 86400)
+today_secs = int(time.time())
+print_warn = "REMOTE BACKUP WARNING: "
 
 # Retrieve backup name instance from the program-name
 backup = sys.argv[0].strip('./')
@@ -23,60 +32,61 @@ backup = '_'.join(backup.split('_')[2:])
 # Backup configuration file
 backup_cfg_file = '/etc/tartarus/generic.inc'
 
-if not os.path.exists(backup_cfg_file):
-    print "REMOTE BACKUP ERROR: Conf file " + backup_cfg_file + " not found!"
-    sys.exit(1)
-
-# Import variables from the backup conf file
-execfile(backup_cfg_file, globals())
-
-# SFTP configuration
-port = 22
-try:
-    transport = p.Transport((STORAGE_FTP_SERVER, port))
-except p.SSHException:
-    print "REMOTE BACKUP ERROR: Broken connection with SFTP server"
-    sys.exit(1)
-transport.connect(username = STORAGE_FTP_USER, password = STORAGE_FTP_PASSWORD)
-sftp = p.SFTPClient.from_transport(transport)
-
-# Age check configuration (86400 = 1 day, 604800 = 1 week); basically
-# this time is calculated along MAX_AGE_IN_DAYS in the
-# '/etc/tartarus/resource.conf' value
-ftp_file_list = sftp.listdir(path='.')
-max_old_secs = 604800
-today_secs = int(time.time())
-
-# Convert seconds amount in days for the output
-old = (max_old_secs / 86400)
+# Check for the remote host
+def hostIsUp(server):
+    response = os.system("ping -c 1 -W 2 " + server + ">/dev/null 2>&1")
+    if response == 0:
+        return True
 
 # Age check
-def fileIsOld(max_old_secs, today_secs, file_age_secs):
-    secs_diff = (today_secs - file_age_secs)
-    if secs_diff > max_old_secs:
+def fileIsOld(max_old, today, file_age):
+    secs_diff = (today - file_age)
+    if secs_diff > max_old:
         return True
+
+# Import values from the Tartarus conf file
+if not os.path.exists(backup_cfg_file):
+    print print_warn + "Conf file " + backup_cfg_file + " not found!"
+    sys.exit(1)
+else:
+    execfile(backup_cfg_file, globals())
+    # SFTP connection setup
+    if hostIsUp(STORAGE_FTP_SERVER) != True:
+        print print_warn + "server " + '"' + \
+        STORAGE_FTP_SERVER + '"' + " either wrong or unreachable!"
+        sys.exit(1)
+    else:
+        transport = p.Transport((STORAGE_FTP_SERVER, 22))
+        try:
+            transport.connect(username = STORAGE_FTP_USER, password = STORAGE_FTP_PASSWORD)
+            sftp = p.SFTPClient.from_transport(transport)
+            ftp_file_list = sftp.listdir(path='.')
+        except p.AuthenticationException:
+            print print_warn + "Wrong credentials for SFTP connection"
+            sys.exit(1)
 
 # Main
 for f in ftp_file_list:
     while f.startswith('tartarus-' + backup):
-        file_age_secs = sftp.stat(f).st_mtime
-        file_age_date = datetime.datetime.fromtimestamp(file_age_secs).strftime('%d/%m/%Y')
-        age_check = fileIsOld(max_old_secs, today_secs, file_age_secs)
+        backup_age = sftp.stat(f).st_mtime
+        backup_date = datetime.datetime.fromtimestamp(backup_age).strftime('%d/%m/%Y')
+        age_check = fileIsOld(backup_max_age, today_secs, backup_age)
 
         if age_check == True:
-            print "REMOTE BACKUP OUTDATED - File " + '"' + f + '"' + " is older than " + old + "days" + ' (' + file_age_date + ')'
+            print print_warn + "File " + '"' + f + '"' + " \
+            is older than " + old_print + "days" + ' (' + backup_date + ')'
             sftp.close()
             transport.close()   
             sys.exit(1)
         else:
-            print "REMOTE BACKUP AGE OK - " + "Last check: " + datetime.datetime.fromtimestamp(today_secs).strftime('%d/%m/%Y')
+            print "REMOTE BACKUP AGE OK - " + "Oldest backup: " + \
+            datetime.datetime.fromtimestamp(backup_age).strftime('%d/%m/%Y') \
+            + " (less than ", old_print, " days)"
             sftp.close()
             transport.close()   
             sys.exit(0)
     
-# Advise if the backup is not present at all on the server
-print "REMOTE BACKUP ERROR - Backup " + backup + " not found on the SFTP server .."
-sftp.close()
-transport.close()   
-
-sys.exit(1)
+    print print_warn + "Backup " + '"' + backup + '"' + " not found on the SFTP server .."
+    sftp.close()
+    transport.close()   
+    sys.exit(1)

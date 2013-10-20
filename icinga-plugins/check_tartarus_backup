@@ -47,14 +47,13 @@ def fileIsOld(max_old, today, file_age):
 
 # Import values from the Tartarus conf file
 if not os.path.exists(backup_cfg_file):
-    print print_warn + "Conf file " + backup_cfg_file + " not found!"
+    print '%s Conf file "%s" not found!' % (print_warn, backup_cfg_file)
     sys.exit(1)
 else:
     execfile(backup_cfg_file, globals())
     # SFTP connection setup
     if hostIsUp(STORAGE_FTP_SERVER) != True:
-        print print_warn + "server " + '"' + \
-        STORAGE_FTP_SERVER + '"' + " either wrong or unreachable!"
+        print '%s server either wrong or unreachable!' % (STORAGE_FTP_SERVER)
         sys.exit(1)
     else:
         transport = p.Transport((STORAGE_FTP_SERVER, 22))
@@ -63,7 +62,7 @@ else:
             sftp = p.SFTPClient.from_transport(transport)
             ftp_file_list = sftp.listdir(path='.')
         except p.AuthenticationException:
-            print print_warn + "Wrong credentials for SFTP connection"
+            print "%s Wrong credentials for SFTP connection" % (print_warn)
             sys.exit(1)
 
 
@@ -75,7 +74,7 @@ for f in ftp_file_list:
         backup_file_list.append(backup_age)
 
 if len(backup_file_list) == 0:
-    print print_warn + "Backup " + '"' + backup + '"' + " not found on the SFTP server .."
+    print '%s Backup "%s" not found on the SFTP server ..' % (print_warn, backup)
     sftp.close()
     transport.close()   
     sys.exit(1)
@@ -87,19 +86,13 @@ else:
     age_outdate = fileIsOld(backup_max_age, today_secs, backup_age)
 
     if age_outdate == True:
-        print print_warn + "File " + '"' + f + '"' + " \
-        is older than " + old_print + "days" + ' (' + backup_latest + ')'
+        print '%s File "%s" is older than %s (%s)' % (print_warn, f, old_print, backup_latest)
         sftp.close()
         transport.close()   
         sys.exit(1)
     else:
-        print "REMOTE BACKUP AGE OK - " + "Latest backup: " + \
+        print 'REMOTE BACKUP AGE OK - Latest backup: "%s" - Oldest backup: "%s"' % (backup_latest, backup_oldest)
         backup_latest + " - Oldest backup: " + backup_oldest
         sftp.close()
         transport.close()   
         sys.exit(0)
-
-
-
-
-

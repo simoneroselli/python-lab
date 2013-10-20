@@ -72,6 +72,13 @@ for f in ftp_file_list:
     if f.startswith(backup):
         backup_age = sftp.stat(f).st_mtime
         backup_file_list.append(backup_age)
+        backup_size = sftp.stat(f).st_size
+
+if backup_size == 0:
+    print '%s Backup "%s" looks 0 bytes!' % (print_warn, f)
+    sftp.close()
+    transport.close()
+    sys.exit(1)
 
 if len(backup_file_list) == 0:
     print '%s Backup "%s" not found on the SFTP server ..' % (print_warn, backup)

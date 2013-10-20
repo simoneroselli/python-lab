@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Check remote FTP backup
+# Check Tartarus SFTP backup 
 #
 # Author ZMo <simoneroselli78@gmail.com>
 #
@@ -20,7 +20,7 @@
 import sys, time, datetime, os
 import paramiko as p
 
-backup_max_age = 604800
+backup_max_age = 86400
 old_print = (backup_max_age / 86400)
 today_secs = int(time.time())
 print_warn = "REMOTE BACKUP WARNING: "
@@ -28,6 +28,7 @@ print_warn = "REMOTE BACKUP WARNING: "
 # Retrieve backup name instance from the program-name
 backup = sys.argv[0].strip('./')
 backup = '_'.join(backup.split('_')[2:])
+backup = 'tartarus-' + backup
 
 # Backup configuration file
 backup_cfg_file = '/etc/tartarus/generic.inc'
@@ -65,28 +66,40 @@ else:
             print print_warn + "Wrong credentials for SFTP connection"
             sys.exit(1)
 
-# Main
-for f in ftp_file_list:
-    while f.startswith('tartarus-' + backup):
-        backup_age = sftp.stat(f).st_mtime
-        backup_date = datetime.datetime.fromtimestamp(backup_age).strftime('%d/%m/%Y')
-        age_check = fileIsOld(backup_max_age, today_secs, backup_age)
 
-        if age_check == True:
-            print print_warn + "File " + '"' + f + '"' + " \
-            is older than " + old_print + "days" + ' (' + backup_date + ')'
-            sftp.close()
-            transport.close()   
-            sys.exit(1)
-        else:
-            print "REMOTE BACKUP AGE OK - " + "Oldest backup: " + \
-            datetime.datetime.fromtimestamp(backup_age).strftime('%d/%m/%Y') \
-            + " (less than ", old_print, " days)"
-            sftp.close()
-            transport.close()   
-            sys.exit(0)
-    
+# Backup age verification
+backup_file_list = []
+for f in ftp_file_list:
+    if f.startswith(backup):
+        backup_age = sftp.stat(f).st_mtime
+        backup_file_list.append(backup_age)
+
+if len(backup_file_list) == 0:
     print print_warn + "Backup " + '"' + backup + '"' + " not found on the SFTP server .."
     sftp.close()
     transport.close()   
     sys.exit(1)
+else:
+    latest = min(backup_file_list)
+    oldest = max(backup_file_list)
+    backup_latest = datetime.datetime.fromtimestamp(latest).strftime('%d/%m/%Y')
+    backup_oldest = datetime.datetime.fromtimestamp(oldest).strftime('%d/%m/%Y')
+    age_outdate = fileIsOld(backup_max_age, today_secs, backup_age)
+
+    if age_outdate == True:
+        print print_warn + "File " + '"' + f + '"' + " \
+        is older than " + old_print + "days" + ' (' + backup_latest + ')'
+        sftp.close()
+        transport.close()   
+        sys.exit(1)
+    else:
+        print "REMOTE BACKUP AGE OK - " + "Latest backup: " + \
+        backup_latest + " - Oldest backup: " + backup_oldest
+        sftp.close()
+        transport.close()   
+        sys.exit(0)
+
+
+
+
+

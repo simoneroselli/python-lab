@@ -33,7 +33,7 @@ backup = 'tartarus-' + backup
 # Backup configuration file
 backup_cfg_file = '/etc/tartarus/generic.inc'
 
-# Exit
+# Warning exit
 def exitWarn():
     sftp.close()
     transport.close()
@@ -97,5 +97,8 @@ else:
         print '%s File "%s" is older than %s days (%s)' % (print_warn, backup, old_print, backup_latest)
         exitWarn()
     else:
-        print 'TARTARUS BACKUP OK - Latest backup: "%s" - Oldest backup: "%s"' % (backup_latest, backup_oldest)
-	    exitWarn()
+        print 'OK - Latest backup: "%s" - Oldest backup: "%s"' % (backup_latest, backup_oldest)
+    	sftp.close()
+    	transport.close()
+    	sys.exit(0)
+	

@@ -17,13 +17,13 @@
 # Nagios's style using the backup name.  
 # Example: ln -s check_tartarus_backup check_tartarus_mysql
 
-import sys, time, datetime, os
+import sys, time, datetime, os, re
 import paramiko as p
 
 backup_max_age = 86400
 old_print = (backup_max_age / 86400)
 today_secs = int(time.time())
-print_warn = "REMOTE BACKUP WARNING: "
+print_warn = "TARTARUS BACKUP WARNING: "
 
 # Retrieve backup name instance from the program-name
 backup = sys.argv[0].strip('./')
@@ -32,6 +32,12 @@ backup = 'tartarus-' + backup
 
 # Backup configuration file
 backup_cfg_file = '/etc/tartarus/generic.inc'
+
+# Exit
+def exitWarn():
+    sftp.close()
+    transport.close()
+    sys.exit(1)
 
 # Check for the remote host
 def hostIsUp(server):
@@ -45,7 +51,7 @@ def fileIsOld(max_old, today, file_age):
     if secs_diff > max_old:
         return True
 
-# Import values from the Tartarus conf file
+# Check whether the configuration file exists
 if not os.path.exists(backup_cfg_file):
     print '%s Conf file "%s" not found!' % (print_warn, backup_cfg_file)
     sys.exit(1)
@@ -65,41 +71,31 @@ else:
             print "%s Wrong credentials for SFTP connection" % (print_warn)
             sys.exit(1)
 
-
-# Backup age verification
+# Main
 backup_file_list = []
 for f in ftp_file_list:
     if f.startswith(backup):
         backup_age = sftp.stat(f).st_mtime
         backup_file_list.append(backup_age)
         backup_size = sftp.stat(f).st_size
-
+	
 if backup_size == 0:
     print '%s Backup "%s" looks 0 bytes!' % (print_warn, f)
-    sftp.close()
-    transport.close()
-    sys.exit(1)
+    exitWarn()
 
 if len(backup_file_list) == 0:
     print '%s Backup "%s" not found on the SFTP server ..' % (print_warn, backup)
-    sftp.close()
-    transport.close()   
-    sys.exit(1)
+    exitWarn()
 else:
-    latest = min(backup_file_list)
-    oldest = max(backup_file_list)
+    latest = max(backup_file_list)
+    oldest = min(backup_file_list)
+    age_outdate = fileIsOld(backup_max_age, today_secs, latest)
     backup_latest = datetime.datetime.fromtimestamp(latest).strftime('%d/%m/%Y')
     backup_oldest = datetime.datetime.fromtimestamp(oldest).strftime('%d/%m/%Y')
-    age_outdate = fileIsOld(backup_max_age, today_secs, backup_age)
 
     if age_outdate == True:
-        print '%s File "%s" is older than %s (%s)' % (print_warn, f, old_print, backup_latest)
-        sftp.close()
-        transport.close()   
-        sys.exit(1)
+        print '%s File "%s" is older than %s days (%s)' % (print_warn, backup, old_print, backup_latest)
+        exitWarn()
     else:
-        print 'REMOTE BACKUP AGE OK - Latest backup: "%s" - Oldest backup: "%s"' % (backup_latest, backup_oldest)
-        backup_latest + " - Oldest backup: " + backup_oldest
-        sftp.close()
-        transport.close()   
-        sys.exit(0)
+        print 'TARTARUS BACKUP OK - Latest backup: "%s" - Oldest backup: "%s"' % (backup_latest, backup_oldest)
+	    exitWarn()

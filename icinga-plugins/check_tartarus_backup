@@ -4,9 +4,9 @@
 #
 # Author ZMo <simoneroselli78@gmail.com>
 #
-# Nagios plugin for Tartarus.
+# Nagios plugin for Tartarus backup.
 # Retrieve the configuration automagically from the Tartarus default
-# configuration. If the backup is remotely stored on the SFTP server,
+# conf file. If the backup is remotely stored on the SFTP server,
 # check about its age and notify
 #
 # Max allowed backup age in seconds.(86400 = 1 day, 604800 = 1 week);
@@ -21,7 +21,6 @@ import sys, time, datetime, os, re
 import paramiko as p
 
 backup_max_age = 86400
-old_print = (backup_max_age / 86400)
 today_secs = int(time.time())
 print_warn = "TARTARUS BACKUP WARNING: "
 
@@ -65,7 +64,9 @@ else:
         transport = p.Transport((STORAGE_FTP_SERVER, 22))
         try:
             transport.connect(username = STORAGE_FTP_USER, password = STORAGE_FTP_PASSWORD)
-            sftp = p.SFTPClient.from_transport(transport)
+            sftp = p.SFTPClient.from_transport(tmnd alias
+                    specification
+
             ftp_file_list = sftp.listdir(path='.')
         except p.AuthenticationException:
             print "%s Wrong credentials for SFTP connection" % (print_warn)
@@ -90,6 +91,7 @@ else:
     latest = max(backup_file_list)
     oldest = min(backup_file_list)
     age_outdate = fileIsOld(backup_max_age, today_secs, latest)
+    old_print = (age_outdate / 86400)
     backup_latest = datetime.datetime.fromtimestamp(latest).strftime('%d/%m/%Y')
     backup_oldest = datetime.datetime.fromtimestamp(oldest).strftime('%d/%m/%Y')
 

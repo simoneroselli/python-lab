@@ -64,9 +64,7 @@ else:
         transport = p.Transport((STORAGE_FTP_SERVER, 22))
         try:
             transport.connect(username = STORAGE_FTP_USER, password = STORAGE_FTP_PASSWORD)
-            sftp = p.SFTPClient.from_transport(tmnd alias
-                    specification
-
+            sftp = p.SFTPClient.from_transport(transport)
             ftp_file_list = sftp.listdir(path='.')
         except p.AuthenticationException:
             print "%s Wrong credentials for SFTP connection" % (print_warn)
@@ -80,9 +78,9 @@ for f in ftp_file_list:
         backup_file_list.append(backup_age)
         backup_size = sftp.stat(f).st_size
 	
-if backup_size == 0:
-    print '%s Backup "%s" looks 0 bytes!' % (print_warn, f)
-    exitWarn()
+        if backup_size == 0:
+            print '%s Backup "%s" looks 0 bytes!' % (print_warn, f)
+            exitWarn()
 
 if len(backup_file_list) == 0:
     print '%s Backup "%s" not found on the SFTP server ..' % (print_warn, backup)
